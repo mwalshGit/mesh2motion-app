@@ -518,6 +518,44 @@ export class StepEditSkeleton extends EventTarget {
     this.update_human_marker_fit_status()
   }
 
+  /** Start the direct-manipulation version of Quick Human Fit. */
+  public begin_human_quick_fit_editing (model: Object3D): void {
+    if (this._current_skeleton_type !== SkeletonType.Human) return
+    this.fit_human_skeleton_to_model_bounds(model)
+    if (this.ui.dom_human_marker_fit_container !== null) this.ui.dom_human_marker_fit_container.style.display = 'none'
+    if (this.ui.dom_human_quick_fit_container !== null) this.ui.dom_human_quick_fit_container.style.display = 'flex'
+    this.dispatchEvent(new CustomEvent('humanQuickFitStarted'))
+    this.dispatchEvent(new CustomEvent('skeletonTransformed'))
+  }
+
+  private fit_human_skeleton_to_model_bounds (model: Object3D): void {
+    const model_bounds = new Box3().setFromObject(model)
+    if (model_bounds.isEmpty() || this.threejs_skeleton.bones.length === 0) return
+
+    const skeleton_bounds = new Box3().makeEmpty()
+    this.threejs_skeleton.bones[0].updateWorldMatrix(true, true)
+    this.threejs_skeleton.bones.forEach(bone => skeleton_bounds.expandByPoint(bone.getWorldPosition(new Vector3())))
+    const skeleton_height = skeleton_bounds.getSize(new Vector3()).y
+    const model_height = model_bounds.getSize(new Vector3()).y
+    if (skeleton_height <= 0 || model_height <= 0) return
+
+    const bone_set = new Set(this.threejs_skeleton.bones)
+    const root = this.threejs_skeleton.bones.find(bone => !bone_set.has(bone.parent as Bone)) ?? this.threejs_skeleton.bones[0]
+    const scale = model_height / skeleton_height
+    root.scale.multiplyScalar(scale)
+    root.updateWorldMatrix(true, true)
+
+    const fitted_bounds = new Box3().makeEmpty()
+    this.threejs_skeleton.bones.forEach(bone => fitted_bounds.expandByPoint(bone.getWorldPosition(new Vector3())))
+    const shift = model_bounds.getCenter(new Vector3()).sub(fitted_bounds.getCenter(new Vector3()))
+    if (root.parent === null) root.position.add(shift)
+    else {
+      root.parent.updateWorldMatrix(true, false)
+      root.position.add(root.parent.worldToLocal(root.getWorldPosition(new Vector3()).add(shift)).sub(root.position))
+    }
+    root.updateWorldMatrix(true, true)
+  }
+
   public is_placing_human_fit_marker (): boolean {
     return this.human_fit_marker_index !== null
   }
