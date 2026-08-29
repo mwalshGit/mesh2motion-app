@@ -111,6 +111,11 @@ export class EventListeners {
     })
 
     this.bootstrap.renderer.domElement.addEventListener('pointerdown', (event: PointerEvent) => {
+      if (this.bootstrap.edit_skeleton_step.is_placing_underarm_marker()) {
+        event.preventDefault()
+        this.bootstrap.handle_underarm_marker_mouse_down(event)
+        return
+      }
       const use_mesh_drag_mode =
         this.bootstrap.process_step === ProcessStep.EditSkeleton &&
         this.bootstrap.edit_skeleton_step.is_mesh_drag_placement_enabled()
