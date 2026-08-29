@@ -1,4 +1,4 @@
-import { Group, Mesh, PlaneGeometry, MeshBasicMaterial, type Scene, DoubleSide } from 'three'
+import { Group, Mesh, PlaneGeometry, MeshBasicMaterial, SphereGeometry, type Scene, DoubleSide, Vector3 } from 'three'
 
 /**
  * ArmPlaneManager - manages the pair of mirrored vertical planes that show where
@@ -17,6 +17,8 @@ export class ArmPlaneManager {
   private left_plane_mesh: Mesh | null = null
   private right_plane_mesh: Mesh | null = null
   private current_plane_x: number = 0.0
+  private current_left_plane_x: number = 0.0
+  private current_right_plane_x: number = 0.0
   private current_center_y: number = 0.0
   private current_center_z: number = 0.0
   private readonly plane_size: number = 2.0
@@ -50,13 +52,19 @@ export class ArmPlaneManager {
    * position before or after toggling visibility.
    */
   public update_position (plane_x: number, center_y: number, center_z: number): void {
-    this.current_plane_x = plane_x
+    this.update_positions(plane_x, plane_x, center_y, center_z)
+  }
+
+  public update_positions (left_plane_x: number, right_plane_x: number, center_y: number, center_z: number): void {
+    this.current_plane_x = Math.max(left_plane_x, right_plane_x)
+    this.current_left_plane_x = left_plane_x
+    this.current_right_plane_x = right_plane_x
     this.current_center_y = center_y
     this.current_center_z = center_z
 
     if (this.left_plane_mesh !== null && this.right_plane_mesh !== null) {
-      this.left_plane_mesh.position.set(-plane_x, center_y, center_z)
-      this.right_plane_mesh.position.set(plane_x, center_y, center_z)
+      this.left_plane_mesh.position.set(-left_plane_x, center_y, center_z)
+      this.right_plane_mesh.position.set(right_plane_x, center_y, center_z)
     }
   }
 
@@ -121,7 +129,26 @@ export class ArmPlaneManager {
     this.is_visible = true
 
     // apply the stored position to the freshly created meshes
-    this.update_position(this.current_plane_x, this.current_center_y, this.current_center_z)
+    this.update_positions(this.current_left_plane_x, this.current_right_plane_x, this.current_center_y, this.current_center_z)
+  }
+
+  /** Add small visible markers at the mesh points selected by the artist. */
+  public show_markers (left: Vector3 | null, right: Vector3 | null): void {
+    if (this.plane_group === null) return
+    this.plane_group.children.filter(child => child.name.startsWith('underarm_marker_')).forEach(marker => {
+      this.plane_group!.remove(marker)
+      const mesh = marker as Mesh
+      mesh.geometry.dispose()
+      ;(mesh.material as MeshBasicMaterial).dispose()
+    })
+    const add_marker = (name: string, point: Vector3): void => {
+      const marker = new Mesh(new SphereGeometry(0.035, 16, 12), new MeshBasicMaterial({ color: 0x3399ff }))
+      marker.name = name
+      marker.position.copy(point)
+      this.plane_group!.add(marker)
+    }
+    if (left !== null) add_marker('underarm_marker_left', left)
+    if (right !== null) add_marker('underarm_marker_right', right)
   }
 
   private create_plane_mesh (name: string): Mesh {
