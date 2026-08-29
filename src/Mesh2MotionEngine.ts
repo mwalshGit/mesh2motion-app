@@ -580,6 +580,14 @@ export class Mesh2MotionEngine {
     }
   }
 
+  public handle_underarm_marker_mouse_down (mouse_event: MouseEvent | PointerEvent): boolean {
+    return this.edit_skeleton_step.place_underarm_marker(
+      this.camera,
+      mouse_event,
+      this.load_model_step.model_meshes()
+    )
+  }
+
   public remove_skinned_meshes_from_scene (): void {
     const existing_skinned_meshes = this.scene.children.filter((child: THREE.Object3D) => child.name.includes('Skinned Mesh'))
     existing_skinned_meshes.forEach((existing_skinned_mesh: THREE.Object3D) => {
@@ -633,6 +641,7 @@ export class Mesh2MotionEngine {
       this.edit_skeleton_step.use_arm_plane_correction(),
       this.edit_skeleton_step.get_arm_plane_offset()
     )
+    this.weight_skin_step.set_arm_plane_positions(...this.edit_skeleton_step.get_arm_plane_positions())
 
     this.weight_skin_step.create_binding_skeleton()
 
@@ -676,6 +685,7 @@ export class Mesh2MotionEngine {
       this.edit_skeleton_step.use_arm_plane_correction(),
       this.edit_skeleton_step.get_arm_plane_offset()
     )
+    this.weight_skin_step.set_arm_plane_positions(...this.edit_skeleton_step.get_arm_plane_positions())
   }
 
   public show_contributors_dialog (): void {
