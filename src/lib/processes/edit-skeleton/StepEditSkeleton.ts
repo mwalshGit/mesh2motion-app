@@ -25,6 +25,20 @@ import {
 import { SkeletonType } from '../../enums/SkeletonType.ts'
 import { RigConfig } from '../../RigConfig.ts'
 
+type HumanFitMarker = 'chin' | 'groin' | 'chest' | 'left_elbow' | 'left_wrist' | 'right_elbow' | 'right_wrist' | 'left_knee' | 'right_knee'
+
+const HUMAN_FIT_MARKERS: Array<{ key: HumanFitMarker, label: string }> = [
+  { key: 'chin', label: 'chin' },
+  { key: 'groin', label: 'groin / pelvis' },
+  { key: 'chest', label: 'middle of the chest' },
+  { key: 'left_elbow', label: 'left elbow' },
+  { key: 'left_wrist', label: 'left wrist' },
+  { key: 'right_elbow', label: 'right elbow' },
+  { key: 'right_wrist', label: 'right wrist' },
+  { key: 'left_knee', label: 'left knee' },
+  { key: 'right_knee', label: 'right knee' }
+]
+
 /*
  * StepEditSkeleton
  * Handles editing the skeleton of the model
@@ -63,6 +77,10 @@ export class StepEditSkeleton extends EventTarget {
   private left_underarm_point: Vector3 | null = null
   private right_underarm_point: Vector3 | null = null
   private underarm_marker_side: 'left' | 'right' | null = null
+
+  // Hands and fingers remain template-driven; the wrist marker moves the whole hand.
+  private human_fit_marker_index: number | null = null
+  private readonly human_fit_markers: Partial<Record<HumanFitMarker, Vector3>> = {}
 
   private readonly joint_texture = new TextureLoader().load('/images/skeleton-joint-point.png')
 
@@ -176,6 +194,7 @@ export class StepEditSkeleton extends EventTarget {
   }
 
   public begin (main_scene: Scene, skeleton_type: SkeletonType): void {
+    this._current_skeleton_type = skeleton_type
     this.update_ui_options_on_begin(skeleton_type)
 
     // show UI elements for editing mesh
@@ -228,6 +247,7 @@ export class StepEditSkeleton extends EventTarget {
 
     this.initialize_preview_plane(main_scene)
     this.initialize_arm_plane(main_scene)
+    this.show_human_marker_fit_options()
   }
 
   private initialize_arm_plane (main_scene: Scene): void {
@@ -479,6 +499,131 @@ export class StepEditSkeleton extends EventTarget {
     return true
   }
 
+  public begin_human_marker_fit (): void {
+    if (this._current_skeleton_type !== SkeletonType.Human) return
+    this.human_fit_marker_index = 0
+    for (const marker of HUMAN_FIT_MARKERS) delete this.human_fit_markers[marker.key]
+    this.update_human_marker_fit_status()
+  }
+
+  public is_placing_human_fit_marker (): boolean {
+    return this.human_fit_marker_index !== null
+  }
+
+  public place_human_fit_marker (camera: PerspectiveCamera, event: MouseEvent | PointerEvent, model: Object3D): boolean {
+    if (this.human_fit_marker_index === null) return false
+    const raycaster = new Raycaster()
+    raycaster.setFromCamera(Utility.normalized_mouse_position(event), camera)
+    const hit = raycaster.intersectObject(model, true)[0]
+    if (hit === undefined) return true
+
+    const marker = HUMAN_FIT_MARKERS[this.human_fit_marker_index]
+    this.human_fit_markers[marker.key] = hit.point.clone()
+    this.human_fit_marker_index += 1
+    if (this.human_fit_marker_index >= HUMAN_FIT_MARKERS.length) {
+      this.human_fit_marker_index = null
+      this.fit_human_skeleton_from_markers()
+    }
+    this.update_human_marker_fit_status()
+    return true
+  }
+
+  private show_human_marker_fit_options (): void {
+    if (this.ui.dom_human_marker_fit_container === null) return
+    const enabled = this._current_skeleton_type === SkeletonType.Human
+    this.ui.dom_human_marker_fit_container.style.display = enabled ? 'flex' : 'none'
+    if (enabled) this.update_human_marker_fit_status()
+  }
+
+  private update_human_marker_fit_status (): void {
+    const status = this.ui.dom_human_marker_fit_status
+    if (status === null) return
+    if (this.human_fit_marker_index === null) {
+      status.textContent = this.human_fit_markers.chin === undefined
+        ? 'For upright human characters in an A- or T-pose.'
+        : 'Skeleton fitted. You can still refine any joint normally.'
+      return
+    }
+    const marker = HUMAN_FIT_MARKERS[this.human_fit_marker_index]
+    status.textContent = `Click the ${marker.label} on the mesh (${this.human_fit_marker_index + 1} of ${HUMAN_FIT_MARKERS.length}).`
+  }
+
+  private find_human_bone (name: string): Bone | undefined {
+    return this.threejs_skeleton.bones.find(bone => bone.name.toLowerCase() === name)
+  }
+
+  private world_position (bone: Bone): Vector3 {
+    this.threejs_skeleton.bones[0]?.updateWorldMatrix(true, true)
+    return bone.getWorldPosition(new Vector3())
+  }
+
+  private set_bone_world_position (bone: Bone, position: Vector3): void {
+    if (bone.parent === null) return
+    bone.parent.updateWorldMatrix(true, false)
+    bone.position.copy(bone.parent.worldToLocal(position.clone()))
+    bone.updateWorldMatrix(true, true)
+  }
+
+  private fit_human_skeleton_from_markers (): void {
+    const markers = this.human_fit_markers
+    if (HUMAN_FIT_MARKERS.some(marker => markers[marker.key] === undefined)) return
+
+    const pelvis = this.find_human_bone('pelvis')
+    const spine1 = this.find_human_bone('spine_01')
+    const spine2 = this.find_human_bone('spine_02')
+    const spine3 = this.find_human_bone('spine_03')
+    const neck = this.find_human_bone('neck_01')
+    const head = this.find_human_bone('head')
+    const leftArm = this.find_human_bone('upperarm_l')
+    const leftForearm = this.find_human_bone('lowerarm_l')
+    const leftHand = this.find_human_bone('hand_l')
+    const rightArm = this.find_human_bone('upperarm_r')
+    const rightForearm = this.find_human_bone('lowerarm_r')
+    const rightHand = this.find_human_bone('hand_r')
+    const leftCalf = this.find_human_bone('calf_l')
+    const leftFoot = this.find_human_bone('foot_l')
+    const rightCalf = this.find_human_bone('calf_r')
+    const rightFoot = this.find_human_bone('foot_r')
+    if ([pelvis, spine1, spine2, spine3, neck, head, leftArm, leftForearm, leftHand, rightArm, rightForearm, rightHand, leftCalf, leftFoot, rightCalf, rightFoot].some(bone => bone === undefined)) return
+
+    const targetPelvis = markers.groin as Vector3
+    const targetChin = markers.chin as Vector3
+    const targetChest = markers.chest as Vector3
+    const templatePelvis = this.world_position(pelvis as Bone)
+    const templateHead = this.world_position(head as Bone)
+    const torsoScale = Math.max(0.35, Math.min(3, targetPelvis.distanceTo(targetChin) / Math.max(0.001, templatePelvis.distanceTo(templateHead))))
+
+    this.store_bone_state_for_undo()
+    this.set_bone_world_position(pelvis as Bone, targetPelvis)
+    this.set_bone_world_position(spine1 as Bone, targetPelvis.clone().lerp(targetChest, 0.33))
+    this.set_bone_world_position(spine2 as Bone, targetPelvis.clone().lerp(targetChest, 0.66))
+    this.set_bone_world_position(spine3 as Bone, targetChest)
+    this.set_bone_world_position(neck as Bone, targetChest.clone().lerp(targetChin, 0.55))
+    this.set_bone_world_position(head as Bone, targetChin)
+
+    this.fit_arm(leftArm as Bone, leftForearm as Bone, leftHand as Bone, markers.left_elbow as Vector3, markers.left_wrist as Vector3, torsoScale)
+    this.fit_arm(rightArm as Bone, rightForearm as Bone, rightHand as Bone, markers.right_elbow as Vector3, markers.right_wrist as Vector3, torsoScale)
+    this.fit_leg(leftCalf as Bone, leftFoot as Bone, markers.left_knee as Vector3, torsoScale)
+    this.fit_leg(rightCalf as Bone, rightFoot as Bone, markers.right_knee as Vector3, torsoScale)
+    this.dispatchEvent(new CustomEvent('skeletonTransformed'))
+  }
+
+  private fit_arm (upperarm: Bone, forearm: Bone, hand: Bone, elbow: Vector3, wrist: Vector3, scale: number): void {
+    const templateUpperLength = this.world_position(upperarm).distanceTo(this.world_position(forearm))
+    const templateForearmLength = Math.max(0.001, this.world_position(forearm).distanceTo(this.world_position(hand)))
+    const shoulder = elbow.clone().add(elbow.clone().sub(wrist).normalize().multiplyScalar(templateUpperLength * scale / templateForearmLength * elbow.distanceTo(wrist)))
+    this.set_bone_world_position(upperarm, shoulder)
+    this.set_bone_world_position(forearm, elbow)
+    this.set_bone_world_position(hand, wrist)
+  }
+
+  private fit_leg (calf: Bone, foot: Bone, knee: Vector3, scale: number): void {
+    const templateFoot = this.world_position(foot)
+    const templateKnee = this.world_position(calf)
+    this.set_bone_world_position(calf, knee)
+    this.set_bone_world_position(foot, knee.clone().add(templateFoot.sub(templateKnee).multiplyScalar(scale)))
+  }
+
   public add_event_listeners (): void {
     if (this.ui.dom_move_to_origin_button !== null) {
       this.ui.dom_move_to_origin_button.addEventListener('click', () => {
@@ -588,6 +733,10 @@ export class StepEditSkeleton extends EventTarget {
 
     this.ui.dom_set_right_underarm_button?.addEventListener('click', () => {
       this.begin_underarm_marker_placement('right')
+    })
+
+    this.ui.dom_start_human_marker_fit_button?.addEventListener('click', () => {
+      this.begin_human_marker_fit()
     })
 
     // keep the arm planes anchored to the shoulder joint when bones get moved
