@@ -181,6 +181,10 @@ export class Mesh2MotionEngine {
     this.scene_environment.enable_orbit_controls(enabled)
   }
 
+  public frame_model_front_view_and_lock (): void {
+    this.scene_environment.frame_front_view_and_lock(this.load_model_step.model_meshes())
+  }
+
   private setup_environment (): void {
     this.scene_environment.setup_environment()
     this.view_helper = this.scene_environment.get_view_helper()
