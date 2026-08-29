@@ -27,11 +27,15 @@ export class ArmWeightCorrector {
   private readonly geometry: BufferGeometry
   private readonly bones: Bone[]
   private readonly arm_plane_offset: number
+  private readonly left_plane_x: number | null
+  private readonly right_plane_x: number | null
 
-  constructor (geometry: BufferGeometry, bones_master_data: Bone[], arm_plane_offset: number) {
+  constructor (geometry: BufferGeometry, bones_master_data: Bone[], arm_plane_offset: number, left_plane_x: number | null = null, right_plane_x: number | null = null) {
     this.geometry = geometry
     this.bones = bones_master_data
     this.arm_plane_offset = arm_plane_offset
+    this.left_plane_x = left_plane_x
+    this.right_plane_x = right_plane_x
   }
 
   /**
@@ -77,8 +81,10 @@ export class ArmWeightCorrector {
     const anchor_x = ArmWeightCorrector.shoulder_anchor_x(this.bones)
     if (anchor_x === null) { return } // no arm bones on this rig, nothing to correct
 
-    const plane_x = anchor_x + this.arm_plane_offset
-    if (plane_x <= 0) { return } // plane pushed past the center line, would strip both arms entirely
+    const default_plane_x = anchor_x + this.arm_plane_offset
+    const left_plane_x = this.left_plane_x ?? default_plane_x
+    const right_plane_x = this.right_plane_x ?? default_plane_x
+    if (left_plane_x <= 0 || right_plane_x <= 0) { return } // a plane pushed past center would strip both arms entirely
 
     const arm_bone_indices = this.find_arm_bone_indices()
     if (arm_bone_indices.size === 0) { return }
@@ -86,7 +92,7 @@ export class ArmWeightCorrector {
     const fallback_bones = this.build_fallback_bone_candidates(arm_bone_indices)
     if (fallback_bones.length === 0) { return }
 
-    this.correct_vertex_weights(skin_indices, skin_weights, plane_x, arm_bone_indices, fallback_bones)
+    this.correct_vertex_weights(skin_indices, skin_weights, left_plane_x, right_plane_x, arm_bone_indices, fallback_bones)
   }
 
   /**
@@ -136,7 +142,8 @@ export class ArmWeightCorrector {
   private correct_vertex_weights (
     skin_indices: number[],
     skin_weights: number[],
-    plane_x: number,
+    left_plane_x: number,
+    right_plane_x: number,
     arm_bone_indices: Set<number>,
     fallback_bones: Array<{ index: number, midpoint: Vector3 }>
   ): void {
@@ -145,9 +152,9 @@ export class ArmWeightCorrector {
     for (let i = 0; i < vertex_count; i++) {
       const vertex_position = new Vector3().fromBufferAttribute(this.geometry.attributes.position, i)
 
-      // Math.abs is what makes this symmetric: one slider drives both arms,
-      // regardless of which side of the model is +X.
-      if (Math.abs(vertex_position.x) >= plane_x) { continue } // outboard of the plane, genuinely arm territory
+      // The user can set separate boundaries because clothing and body shape are
+      // often asymmetric. A vertex between the two walls is torso territory.
+      if (vertex_position.x <= -left_plane_x || vertex_position.x >= right_plane_x) { continue }
 
       const offset = i * 4
 
