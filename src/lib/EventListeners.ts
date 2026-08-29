@@ -53,6 +53,16 @@ export class EventListeners {
       this.bootstrap.update_edit_bone_interaction_mode()
     })
 
+    this.bootstrap.edit_skeleton_step.addEventListener('humanMarkerFitStarted', () => {
+      // The quick-fit template is not something the user needs to manipulate.
+      // Show only the landmark circles until the fitted skeleton is ready.
+      this.bootstrap.skeleton_helper?.hide()
+    })
+
+    this.bootstrap.edit_skeleton_step.addEventListener('humanMarkerFitCompleted', () => {
+      this.bootstrap.skeleton_helper?.show()
+    })
+
     // attribution link clicking brings up contributors dialog
     this.bootstrap.ui.dom_attribution_link?.addEventListener('click', (event: MouseEvent) => {
       event.preventDefault()
