@@ -588,6 +588,14 @@ export class Mesh2MotionEngine {
     )
   }
 
+  public handle_human_fit_marker_mouse_down (mouse_event: MouseEvent | PointerEvent): boolean {
+    return this.edit_skeleton_step.place_human_fit_marker(
+      this.camera,
+      mouse_event,
+      this.load_model_step.model_meshes()
+    )
+  }
+
   public remove_skinned_meshes_from_scene (): void {
     const existing_skinned_meshes = this.scene.children.filter((child: THREE.Object3D) => child.name.includes('Skinned Mesh'))
     existing_skinned_meshes.forEach((existing_skinned_mesh: THREE.Object3D) => {
