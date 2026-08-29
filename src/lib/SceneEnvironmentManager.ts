@@ -116,8 +116,10 @@ export class SceneEnvironmentManager {
     const distance = Math.max(3, height_distance, width_distance) * 1.2
     const full_horizontal_fov = 2 * Math.atan(Math.tan(vertical_fov / 2) * this.camera.aspect)
     const full_width_at_target = 2 * distance * Math.tan(full_horizontal_fov / 2)
-    const shift_left = -(tool_panel_width / window.innerWidth) * (full_width_at_target / 2)
-    const target = center.clone().add(new Vector3(shift_left, 0, 0))
+    // Aim the camera slightly toward the panel so the model itself appears in
+    // the clear workspace on the left.
+    const shift_right = (tool_panel_width / window.innerWidth) * (full_width_at_target / 2)
+    const target = center.clone().add(new Vector3(shift_right, 0, 0))
     this.camera.position.set(target.x, target.y, center.z + distance)
     this.controls.target.copy(target)
     this.controls.enabled = true
