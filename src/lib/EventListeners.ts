@@ -25,6 +25,9 @@ export class EventListeners {
     this.bootstrap.load_skeleton_step.addEventListener('skeletonLoaded', () => {
       this.bootstrap.edit_skeleton_step.load_original_armature_from_model(this.bootstrap.load_skeleton_step.armature())
       this.bootstrap.process_step = this.bootstrap.process_step_changed(ProcessStep.EditSkeleton)
+      if (this.bootstrap.load_skeleton_step.consume_quick_human_fit_request()) {
+        this.bootstrap.edit_skeleton_step.begin_human_marker_fit()
+      }
     })
 
     // Listen for skeleton transformation events to update UI and visuals
