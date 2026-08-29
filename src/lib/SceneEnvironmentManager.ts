@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { type Scene, type Vector3, Group } from 'three'
+import { Box3, Group, type Object3D, type Scene, Vector3 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { type CustomTransformControls } from './components/CustomTransformControls.ts'
 
@@ -88,6 +88,22 @@ export class SceneEnvironmentManager {
     }
 
     this.controls.enabled = enabled
+  }
+
+  /** Frame an upright model straight on and prevent orbiting during guided landmark placement. */
+  public frame_front_view_and_lock (model: Object3D): void {
+    if (this.controls === undefined) return
+    const bounds = new Box3().setFromObject(model)
+    if (bounds.isEmpty()) return
+
+    const center = bounds.getCenter(new Vector3())
+    const size = bounds.getSize(new Vector3())
+    const vertical_fov = THREE.MathUtils.degToRad(this.camera.fov)
+    const distance = Math.max(3, (size.y * 0.6) / Math.tan(vertical_fov / 2) * 1.2)
+    this.camera.position.set(center.x, center.y, center.z + distance)
+    this.controls.target.copy(center)
+    this.controls.enabled = false
+    this.controls.update()
   }
 
   public set_camera_position (position: Vector3): void {
