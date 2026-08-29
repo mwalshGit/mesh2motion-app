@@ -104,13 +104,22 @@ export class SceneEnvironmentManager {
     const center = bounds.getCenter(new Vector3())
     const size = bounds.getSize(new Vector3())
     const vertical_fov = THREE.MathUtils.degToRad(this.camera.fov)
-    const aspect = Math.max(0.1, this.camera.aspect)
-    const horizontal_fov = 2 * Math.atan(Math.tan(vertical_fov / 2) * aspect)
+    // The controls sit on top of the canvas rather than beside it. Frame to the
+    // part the person can actually see, otherwise an outstretched arm ends up
+    // hidden behind the panel.
+    const tool_panel_width = document.getElementById('tool-panel')?.getBoundingClientRect().width ?? 0
+    const workspace_width = Math.max(1, window.innerWidth - tool_panel_width)
+    const workspace_aspect = Math.max(0.1, workspace_width / window.innerHeight)
+    const horizontal_fov = 2 * Math.atan(Math.tan(vertical_fov / 2) * workspace_aspect)
     const height_distance = (size.y / 2) / Math.tan(vertical_fov / 2)
     const width_distance = (size.x / 2) / Math.tan(horizontal_fov / 2)
     const distance = Math.max(3, height_distance, width_distance) * 1.2
-    this.camera.position.set(center.x, center.y, center.z + distance)
-    this.controls.target.copy(center)
+    const full_horizontal_fov = 2 * Math.atan(Math.tan(vertical_fov / 2) * this.camera.aspect)
+    const full_width_at_target = 2 * distance * Math.tan(full_horizontal_fov / 2)
+    const shift_left = -(tool_panel_width / window.innerWidth) * (full_width_at_target / 2)
+    const target = center.clone().add(new Vector3(shift_left, 0, 0))
+    this.camera.position.set(target.x, target.y, center.z + distance)
+    this.controls.target.copy(target)
     this.controls.enabled = true
     this.controls.enableRotate = false
     this.controls.enablePan = true
