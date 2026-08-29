@@ -161,6 +161,11 @@ export class StepWeightSkin extends EventTarget {
     this.bone_skinning_formula.set_arm_plane_offset(offset)
   }
 
+  public set_arm_plane_positions (left_plane_x: number | null, right_plane_x: number | null): void {
+    if (this.bone_skinning_formula === undefined) return
+    this.bone_skinning_formula.set_arm_plane_positions(left_plane_x, right_plane_x)
+  }
+
   public calculate_weights (): number[][] {
     if (this.bone_skinning_formula === undefined) return [[], []]
     return this.bone_skinning_formula.calculate_indexes_and_weights()
