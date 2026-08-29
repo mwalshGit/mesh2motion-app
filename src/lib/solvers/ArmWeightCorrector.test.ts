@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { Bone, BufferGeometry, Float32BufferAttribute, type Vector3 } from 'three'
+import { Bone, BufferGeometry, Float32BufferAttribute, MeshBasicMaterial, Skeleton, SkinnedMesh, Uint16BufferAttribute, Vector3 } from 'three'
 import { Utility } from '../Utilities'
 import { ArmWeightCorrector } from './ArmWeightCorrector'
 
@@ -72,6 +72,34 @@ function geometry_from_points (points: Array<[number, number, number]>): BufferG
   return geometry
 }
 
+/**
+ * Produces the actual skinned position for a single test vertex after the left
+ * arm is raised. This makes the underarm test observable as deformation, not
+ * merely as a list of changed weight indices.
+ */
+function raised_arm_vertex_position (
+  bones: Bone[],
+  vertex: [number, number, number],
+  skin_indices: number[],
+  skin_weights: number[]
+): Vector3 {
+  const geometry = geometry_from_points([vertex])
+  geometry.setAttribute('skinIndex', new Uint16BufferAttribute(skin_indices, 4))
+  geometry.setAttribute('skinWeight', new Float32BufferAttribute(skin_weights, 4))
+
+  const mesh = new SkinnedMesh(geometry, new MeshBasicMaterial())
+  bones[0].updateWorldMatrix(true, true)
+  mesh.bind(new Skeleton(bones))
+
+  const upperarm_l = bones.find(bone => bone.name === 'upperarm_l')
+  if (upperarm_l === undefined) throw new Error('test rig has no left upper arm')
+  upperarm_l.rotation.z = -Math.PI / 2
+  bones[0].updateWorldMatrix(true, true)
+  mesh.skeleton.update()
+
+  return mesh.applyBoneTransform(0, new Vector3(...vertex))
+}
+
 describe('ArmWeightCorrector.shoulder_anchor_x', () => {
   it('returns the absolute world X of the upperarm bone', () => {
     const bones = build_test_rig()
@@ -86,6 +114,34 @@ describe('ArmWeightCorrector.shoulder_anchor_x', () => {
 })
 
 describe('ArmWeightCorrector.apply_arm_weight_correction', () => {
+  it('keeps a protected chest vertex in place when the arm is raised', () => {
+    const vertex: [number, number, number] = [0.35, 1.5, 0]
+
+    // Before correction, this chest vertex is fully weighted to the arm and
+    // gets pulled far from its bind position when the arm lifts.
+    const uncorrected_bones = build_test_rig()
+    const upperarm_l = bone_index(uncorrected_bones, 'upperarm_l')
+    const pulled_position = raised_arm_vertex_position(
+      uncorrected_bones, vertex, [upperarm_l, 0, 0, 0], [1, 0, 0, 0]
+    )
+    expect(pulled_position.distanceTo(new Vector3(...vertex))).toBeGreaterThan(0.5)
+
+    // The same vertex, after correction, is assigned to the clavicle/torso
+    // area instead and does not follow the upper arm.
+    const corrected_bones = build_test_rig()
+    const corrected_upperarm_l = bone_index(corrected_bones, 'upperarm_l')
+    const corrected_geometry = geometry_from_points([vertex])
+    const corrected_indices = [corrected_upperarm_l, 0, 0, 0]
+    const corrected_weights = [1, 0, 0, 0]
+    new ArmWeightCorrector(corrected_geometry, corrected_bones, 0)
+      .apply_arm_weight_correction(corrected_indices, corrected_weights)
+
+    const protected_position = raised_arm_vertex_position(
+      corrected_bones, vertex, corrected_indices, corrected_weights
+    )
+    expect(protected_position.distanceTo(new Vector3(...vertex))).toBeLessThan(0.001)
+  })
+
   it('reassigns inboard vertices off arm bones onto the nearest non-arm bone', () => {
     const bones = build_test_rig()
     const upperarm_l = bone_index(bones, 'upperarm_l')
@@ -128,6 +184,24 @@ describe('ArmWeightCorrector.apply_arm_weight_correction', () => {
     new ArmWeightCorrector(geometry, bones, 0).apply_arm_weight_correction(skin_indices, skin_weights)
 
     expect(bones[skin_indices[0]].name).toBe('clavicle_r')
+  })
+
+  it('uses independent left and right underarm boundaries', () => {
+    const bones = build_test_rig()
+    const upperarm_l = bone_index(bones, 'upperarm_l')
+    const upperarm_r = bone_index(bones, 'upperarm_r')
+    // Both points are normally protected by the default x=1 boundary. Here the
+    // artist moves only the negative-X boundary inward to 0.5, leaving that
+    // side arm territory while the positive-X side remains protected at 1.0.
+    const geometry = geometry_from_points([[0.65, 1.5, 0], [-0.65, 1.5, 0]])
+    const skin_indices = [upperarm_l, 0, 0, 0, upperarm_r, 0, 0, 0]
+    const skin_weights = [1, 0, 0, 0, 1, 0, 0, 0]
+
+    new ArmWeightCorrector(geometry, bones, 0, 0.5, 1.0)
+      .apply_arm_weight_correction(skin_indices, skin_weights)
+
+    expect(skin_indices[0]).not.toBe(upperarm_l) // positive-X point protected
+    expect(skin_indices[4]).toBe(upperarm_r) // negative-X point remains arm territory
   })
 
   it('never hands a vertex to the clavicle when the offset pushes the plane past it', () => {
