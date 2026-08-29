@@ -297,19 +297,27 @@
 
           </div>
 
-          <!-- Arm plane controls -->
+          <!-- Underarm protection controls -->
           <div id="use-arm-plane-container" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;">
             <div class="styled-checkbox">
               <input type="checkbox" id="arm-plane-checkbox" />
-              <label for="arm-plane-checkbox">Use Arm Plane Correction</label>
+              <label for="arm-plane-checkbox">Protect torso under arms</label>
 
-              <img data-tippy-content="If the arms are grabbing weights from the torso (common when arms point down in an A-pose), use a divider to define where the arm area starts." src="images/icons/help.svg" alt="Help" width="20" height="20" />
+              <img data-tippy-content="Use this when the upper arms are close to the torso. The blue boundaries show where arm weighting begins; vertices inside them are kept off the upper arm so the chest does not get pulled when the arm lifts." src="images/icons/help.svg" alt="Help" width="20" height="20" />
 
             </div>
-            <div id="arm-plane-setting-container" style="display: flex; align-items: center; gap: 0.5rem;">
-              <label for="arm-plane-offset-input">Distance:</label>
-              <input type="range" id="arm-plane-offset-input" min="-0.10" max="0.10" step="0.001" value="0.00" />
-              <span id="arm-plane-offset-label" style="width: 3.5rem;">0.0%</span>
+            <div id="arm-plane-setting-container" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem;">
+              <span>Click each button, then click the matching underarm on the mesh.</span>
+              <div style="display: flex; gap: 0.5rem;">
+                <button type="button" id="set-left-underarm-button">Set left underarm</button>
+                <button type="button" id="set-right-underarm-button">Set right underarm</button>
+              </div>
+              <details>
+                <summary>Fine-tune both boundaries together</summary>
+                <label for="arm-plane-offset-input">Boundary position:</label>
+                <input type="range" id="arm-plane-offset-input" min="-0.10" max="0.10" step="0.001" value="0.00" />
+                <span id="arm-plane-offset-label" style="width: 3.5rem;">0.0%</span>
+              </details>
             </div>
           </div>
 
