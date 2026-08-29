@@ -27,6 +27,7 @@ export class StepLoadSkeleton extends EventTarget {
   // this helps the marketing page set the type and doesn't rely on a DOM value
   // probably could refactor this a bit to be cleaner later.
   private manual_set_skeleton_type: SkeletonType = SkeletonType.None
+  private quick_human_fit_requested: boolean = false
 
   public skeleton_type (): SkeletonType {
     if (this.skeleton_file_path() === SkeletonType.None) {
@@ -38,6 +39,22 @@ export class StepLoadSkeleton extends EventTarget {
 
   public set_skeleton_type (type: SkeletonType): void {
     this.manual_set_skeleton_type = type
+  }
+
+  public start_quick_human_fit (): void {
+    this.quick_human_fit_requested = true
+    this.manual_set_skeleton_type = SkeletonType.Human
+    if (this.ui.dom_skeleton_drop_type !== null) {
+      this.ui.dom_skeleton_drop_type.value = SkeletonType.Human
+    }
+    const rig_file = RigConfig.rig_file_for(SkeletonType.Human)
+    if (rig_file !== undefined) this.load_skeleton_file(rig_file)
+  }
+
+  public consume_quick_human_fit_request (): boolean {
+    const requested = this.quick_human_fit_requested
+    this.quick_human_fit_requested = false
+    return requested
   }
 
   // The edit skeleton step will use this to scale the skeleton when loading editable skeleton
@@ -170,6 +187,10 @@ export class StepLoadSkeleton extends EventTarget {
         }
       })
     }// end if statement
+
+    this.ui.dom_quick_human_fit_button?.addEventListener('click', () => {
+      this.start_quick_human_fit()
+    })
 
     // when hand skeleton type changes. update the preview skeleton
     this.ui.dom_hand_skeleton_selection?.addEventListener('change', () => {
