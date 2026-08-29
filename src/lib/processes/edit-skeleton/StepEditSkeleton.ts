@@ -19,6 +19,7 @@ import {
   Points,
   Float32BufferAttribute,
   TextureLoader,
+  Raycaster,
   type PerspectiveCamera
 } from 'three'
 import { SkeletonType } from '../../enums/SkeletonType.ts'
@@ -59,6 +60,9 @@ export class StepEditSkeleton extends EventTarget {
   // so it has to match the default in create.html's slider.
   private enable_arm_plane_correction: boolean = false
   private arm_plane_offset: number = 0.0
+  private left_underarm_point: Vector3 | null = null
+  private right_underarm_point: Vector3 | null = null
+  private underarm_marker_side: 'left' | 'right' | null = null
 
   private readonly joint_texture = new TextureLoader().load('/images/skeleton-joint-point.png')
 
@@ -272,7 +276,9 @@ export class StepEditSkeleton extends EventTarget {
       ? new Vector3()
       : Utility.world_position_from_object(shoulder_bone)
 
-    this.arm_plane_manager.update_position(anchor_x + this.arm_plane_offset, shoulder_position.y, shoulder_position.z)
+    const left_plane_x = this.left_underarm_point === null ? anchor_x + this.arm_plane_offset : Math.abs(this.left_underarm_point.x)
+    const right_plane_x = this.right_underarm_point === null ? anchor_x + this.arm_plane_offset : Math.abs(this.right_underarm_point.x)
+    this.arm_plane_manager.update_positions(left_plane_x, right_plane_x, shoulder_position.y, shoulder_position.z)
   }
 
   private initialize_preview_plane (main_scene: Scene): void {
@@ -446,6 +452,33 @@ export class StepEditSkeleton extends EventTarget {
     return this.arm_plane_offset
   }
 
+  public get_arm_plane_positions (): [number | null, number | null] {
+    return [this.left_underarm_point === null ? null : Math.abs(this.left_underarm_point.x), this.right_underarm_point === null ? null : Math.abs(this.right_underarm_point.x)]
+  }
+
+  public begin_underarm_marker_placement (side: 'left' | 'right'): void {
+    this.underarm_marker_side = side
+  }
+
+  public is_placing_underarm_marker (): boolean {
+    return this.underarm_marker_side !== null
+  }
+
+  public place_underarm_marker (camera: PerspectiveCamera, event: MouseEvent | PointerEvent, model: Object3D): boolean {
+    if (this.underarm_marker_side === null) return false
+    const raycaster = new Raycaster()
+    raycaster.setFromCamera(Utility.normalized_mouse_position(event), camera)
+    const hit = raycaster.intersectObject(model, true)[0]
+    if (hit === undefined) return true
+    const point = hit.point.clone()
+    if (this.underarm_marker_side === 'left') this.left_underarm_point = point
+    else this.right_underarm_point = point
+    this.underarm_marker_side = null
+    this.arm_plane_manager.show_markers(this.left_underarm_point, this.right_underarm_point)
+    this.refresh_arm_plane_position()
+    return true
+  }
+
   public add_event_listeners (): void {
     if (this.ui.dom_move_to_origin_button !== null) {
       this.ui.dom_move_to_origin_button.addEventListener('click', () => {
@@ -547,6 +580,14 @@ export class StepEditSkeleton extends EventTarget {
       if (this.ui.dom_arm_plane_offset_label !== null) {
         this.ui.dom_arm_plane_offset_label.textContent = this.format_arm_plane_offset_label()
       }
+    })
+
+    this.ui.dom_set_left_underarm_button?.addEventListener('click', () => {
+      this.begin_underarm_marker_placement('left')
+    })
+
+    this.ui.dom_set_right_underarm_button?.addEventListener('click', () => {
+      this.begin_underarm_marker_placement('right')
     })
 
     // keep the arm planes anchored to the shoulder joint when bones get moved
