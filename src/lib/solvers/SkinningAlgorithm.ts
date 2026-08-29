@@ -35,6 +35,8 @@ export default class SkinningAlgorithm {
   // joint's X, which the corrector reads off the bones itself.
   private use_arm_plane_correction: boolean = false
   private arm_plane_offset: number = 0.0
+  private left_arm_plane_x: number | null = null
+  private right_arm_plane_x: number | null = null
 
   constructor (bone_hier: Object3D, skeleton_type: SkeletonType) {
     this.skeleton_type = skeleton_type
@@ -59,6 +61,11 @@ export default class SkinningAlgorithm {
 
   public set_arm_plane_offset (offset: number): void {
     this.arm_plane_offset = offset
+  }
+
+  public set_arm_plane_positions (left_plane_x: number | null, right_plane_x: number | null): void {
+    this.left_arm_plane_x = left_plane_x
+    this.right_arm_plane_x = right_plane_x
   }
 
   public calculate_indexes_and_weights (): number[][] {
@@ -86,7 +93,9 @@ export default class SkinningAlgorithm {
       const arm_weight_corrector = new ArmWeightCorrector(
         this.geometry,
         this.bones_master_data,
-        this.arm_plane_offset
+        this.arm_plane_offset,
+        this.left_arm_plane_x,
+        this.right_arm_plane_x
       )
       arm_weight_corrector.apply_arm_weight_correction(skin_indices, skin_weights)
     }
