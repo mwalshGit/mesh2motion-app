@@ -67,6 +67,8 @@ export class UI {
   dom_arm_plane_offset_input: HTMLInputElement | null = null
   dom_arm_plane_offset_label: HTMLElement | null = null
   dom_arm_plane_setting_container: HTMLElement | null = null
+  dom_set_left_underarm_button: HTMLButtonElement | null = null
+  dom_set_right_underarm_button: HTMLButtonElement | null = null
 
   dom_skinned_mesh_tools: HTMLElement | null = null
   dom_skinned_mesh_animation_tools: HTMLElement | null = null
@@ -197,6 +199,8 @@ export class UI {
     this.dom_arm_plane_offset_input = document.querySelector('#arm-plane-offset-input')
     this.dom_arm_plane_offset_label = document.querySelector('#arm-plane-offset-label')
     this.dom_arm_plane_setting_container = document.querySelector('#arm-plane-setting-container')
+    this.dom_set_left_underarm_button = document.querySelector('#set-left-underarm-button')
+    this.dom_set_right_underarm_button = document.querySelector('#set-right-underarm-button')
 
     this.dom_bind_pose_button = document.querySelector('#action_bind_pose')
     // this.dom_scale_skeleton_input_box = document.querySelector('#scale-input')
