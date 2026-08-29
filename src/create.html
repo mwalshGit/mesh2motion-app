@@ -289,10 +289,19 @@
 
 
           <div id="human-marker-fit-container" class="alternate-background-section" style="display: none; flex-direction: column; gap: 0.5rem; margin: 0.75rem 0;">
-            <strong>Quick human fit</strong>
-            <span>Place 9 landmarks. The existing skeleton, including hands and fingers, is fitted automatically.</span>
-            <button type="button" id="start-human-marker-fit-button">Start 9-point fit</button>
+            <strong>Place markers</strong>
+            <span>Use the front view. Click each colored point on your character, then generate the skeleton.</span>
+            <img class="human-fit-placement-guide" src="images/human-fit-placement-guide-small.png" alt="Reference person showing colored circles at chin, wrists, elbows, groin, and knees." />
+            <div class="human-fit-marker-key" aria-label="Marker colors">
+              <span class="marker-key marker-key-chin">Chin</span>
+              <span class="marker-key marker-key-wrist">Wrists</span>
+              <span class="marker-key marker-key-elbow">Elbows</span>
+              <span class="marker-key marker-key-knee">Knees</span>
+              <span class="marker-key marker-key-groin">Groin</span>
+            </div>
+            <button type="button" id="start-human-marker-fit-button">Place 8 markers</button>
             <span id="human-marker-fit-status" aria-live="polite">For upright human characters in an A- or T-pose.</span>
+            <button type="button" id="generate-human-fit-skeleton-button" style="display: none;">Generate skeleton</button>
           </div>
 
           <!-- Preview plane controls -->

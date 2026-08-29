@@ -75,6 +75,7 @@ export class UI {
   dom_human_marker_fit_container: HTMLElement | null = null
   dom_start_human_marker_fit_button: HTMLButtonElement | null = null
   dom_human_marker_fit_status: HTMLElement | null = null
+  dom_generate_human_fit_skeleton_button: HTMLButtonElement | null = null
 
   dom_skinned_mesh_tools: HTMLElement | null = null
   dom_skinned_mesh_animation_tools: HTMLElement | null = null
@@ -211,6 +212,7 @@ export class UI {
     this.dom_human_marker_fit_container = document.querySelector('#human-marker-fit-container')
     this.dom_start_human_marker_fit_button = document.querySelector('#start-human-marker-fit-button')
     this.dom_human_marker_fit_status = document.querySelector('#human-marker-fit-status')
+    this.dom_generate_human_fit_skeleton_button = document.querySelector('#generate-human-fit-skeleton-button')
 
     this.dom_bind_pose_button = document.querySelector('#action_bind_pose')
     // this.dom_scale_skeleton_input_box = document.querySelector('#scale-input')

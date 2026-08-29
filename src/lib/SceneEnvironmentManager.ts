@@ -88,9 +88,14 @@ export class SceneEnvironmentManager {
     }
 
     this.controls.enabled = enabled
+    if (enabled) {
+      this.controls.enableRotate = true
+      this.controls.enablePan = true
+      this.controls.enableZoom = true
+    }
   }
 
-  /** Frame an upright model straight on and prevent orbiting during guided landmark placement. */
+  /** Frame an upright model straight on. Keep pan and zoom available during guided landmark placement. */
   public frame_front_view_and_lock (model: Object3D): void {
     if (this.controls === undefined) return
     const bounds = new Box3().setFromObject(model)
@@ -99,10 +104,17 @@ export class SceneEnvironmentManager {
     const center = bounds.getCenter(new Vector3())
     const size = bounds.getSize(new Vector3())
     const vertical_fov = THREE.MathUtils.degToRad(this.camera.fov)
-    const distance = Math.max(3, (size.y * 0.6) / Math.tan(vertical_fov / 2) * 1.2)
+    const aspect = Math.max(0.1, this.camera.aspect)
+    const horizontal_fov = 2 * Math.atan(Math.tan(vertical_fov / 2) * aspect)
+    const height_distance = (size.y / 2) / Math.tan(vertical_fov / 2)
+    const width_distance = (size.x / 2) / Math.tan(horizontal_fov / 2)
+    const distance = Math.max(3, height_distance, width_distance) * 1.2
     this.camera.position.set(center.x, center.y, center.z + distance)
     this.controls.target.copy(center)
-    this.controls.enabled = false
+    this.controls.enabled = true
+    this.controls.enableRotate = false
+    this.controls.enablePan = true
+    this.controls.enableZoom = true
     this.controls.update()
   }
 

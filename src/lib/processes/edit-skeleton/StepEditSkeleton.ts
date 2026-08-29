@@ -25,12 +25,11 @@ import {
 import { SkeletonType } from '../../enums/SkeletonType.ts'
 import { RigConfig } from '../../RigConfig.ts'
 
-type HumanFitMarker = 'chin' | 'groin' | 'chest' | 'left_elbow' | 'left_wrist' | 'right_elbow' | 'right_wrist' | 'left_knee' | 'right_knee'
+type HumanFitMarker = 'chin' | 'groin' | 'left_elbow' | 'left_wrist' | 'right_elbow' | 'right_wrist' | 'left_knee' | 'right_knee'
 
 const HUMAN_FIT_MARKERS: Array<{ key: HumanFitMarker, label: string }> = [
   { key: 'chin', label: 'chin' },
   { key: 'groin', label: 'groin / pelvis' },
-  { key: 'chest', label: 'middle of the chest' },
   { key: 'left_elbow', label: 'left elbow' },
   { key: 'left_wrist', label: 'left wrist' },
   { key: 'right_elbow', label: 'right elbow' },
@@ -78,6 +77,7 @@ export class StepEditSkeleton extends EventTarget {
   private right_underarm_point: Vector3 | null = null
   private underarm_marker_side: 'left' | 'right' | null = null
 
+  // The quick-fit deliberately uses a small, Mixamo-like set of landmarks.
   // Hands and fingers remain template-driven; the wrist marker moves the whole hand.
   private human_fit_marker_index: number | null = null
   private readonly human_fit_markers: Partial<Record<HumanFitMarker, Vector3>> = {}
@@ -505,6 +505,7 @@ export class StepEditSkeleton extends EventTarget {
     this.human_fit_marker_index = 0
     for (const marker of HUMAN_FIT_MARKERS) delete this.human_fit_markers[marker.key]
     this.remove_human_fit_marker_points()
+    if (this.ui.dom_generate_human_fit_skeleton_button !== null) this.ui.dom_generate_human_fit_skeleton_button.style.display = 'none'
     // The template is only an internal starting point. Keep it out of the way
     // while the user is placing landmarks, then reveal the fitted result.
     this.dispatchEvent(new CustomEvent('humanMarkerFitStarted'))
@@ -528,9 +529,7 @@ export class StepEditSkeleton extends EventTarget {
     this.human_fit_marker_index += 1
     if (this.human_fit_marker_index >= HUMAN_FIT_MARKERS.length) {
       this.human_fit_marker_index = null
-      this.fit_human_skeleton_from_markers()
-      this.remove_human_fit_marker_points()
-      this.dispatchEvent(new CustomEvent('humanMarkerFitCompleted'))
+      if (this.ui.dom_generate_human_fit_skeleton_button !== null) this.ui.dom_generate_human_fit_skeleton_button.style.display = 'block'
     }
     this.update_human_marker_fit_status()
     return true
@@ -549,11 +548,20 @@ export class StepEditSkeleton extends EventTarget {
     if (this.human_fit_marker_index === null) {
       status.textContent = this.human_fit_markers.chin === undefined
         ? 'For upright human characters in an A- or T-pose.'
-        : 'Skeleton fitted. You can now drag any joint to refine it.'
+        : 'All 8 markers are placed. Check them against the guide, then generate the skeleton.'
       return
     }
     const marker = HUMAN_FIT_MARKERS[this.human_fit_marker_index]
     status.textContent = `Click the ${marker.label} on the mesh (${this.human_fit_marker_index + 1} of ${HUMAN_FIT_MARKERS.length}).`
+  }
+
+  public generate_human_fit_skeleton (): void {
+    if (this.human_fit_marker_index !== null || HUMAN_FIT_MARKERS.some(marker => this.human_fit_markers[marker.key] === undefined)) return
+    this.fit_human_skeleton_from_markers()
+    this.remove_human_fit_marker_points()
+    if (this.ui.dom_generate_human_fit_skeleton_button !== null) this.ui.dom_generate_human_fit_skeleton_button.style.display = 'none'
+    this.dispatchEvent(new CustomEvent('humanMarkerFitCompleted'))
+    if (this.ui.dom_human_marker_fit_status !== null) this.ui.dom_human_marker_fit_status.textContent = 'Skeleton generated. You can now drag any joint to refine it.'
   }
 
   private find_human_bone (name: string): Bone | undefined {
@@ -596,7 +604,7 @@ export class StepEditSkeleton extends EventTarget {
 
     const targetPelvis = markers.groin as Vector3
     const targetChin = markers.chin as Vector3
-    const targetChest = markers.chest as Vector3
+    const targetChest = targetPelvis.clone().lerp(targetChin, 0.62)
     const templatePelvis = this.world_position(pelvis as Bone)
     const templateHead = this.world_position(head as Bone)
     const torsoScale = Math.max(0.35, Math.min(3, targetPelvis.distanceTo(targetChin) / Math.max(0.001, templatePelvis.distanceTo(templateHead))))

@@ -901,6 +901,42 @@ input[type="file"] {
     padding: 1rem;
 }
 
+.human-fit-placement-guide {
+    display: block;
+    width: min(100%, 245px);
+    max-height: 330px;
+    margin: 0.25rem auto;
+    object-fit: contain;
+    background: #ececec;
+}
+
+.human-fit-marker-key {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.marker-key {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.8rem;
+}
+
+.marker-key::before {
+    content: '';
+    width: 0.55rem;
+    height: 0.55rem;
+    border: 2px solid currentColor;
+    border-radius: 999px;
+}
+
+.marker-key-chin { color: #00cbd3; }
+.marker-key-wrist { color: #9bd83d; }
+.marker-key-elbow { color: #ffd22f; }
+.marker-key-knee { color: #f49b31; }
+.marker-key-groin { color: #f56a9b; }
+
 
 /* Theme toggle button styles */
 #theme-toggle {

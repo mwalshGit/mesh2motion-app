@@ -65,6 +65,10 @@ export class EventListeners {
       this.bootstrap.enable_orbit_controls(true)
     })
 
+    this.bootstrap.ui.dom_generate_human_fit_skeleton_button?.addEventListener('click', () => {
+      this.bootstrap.edit_skeleton_step.generate_human_fit_skeleton()
+    })
+
     // attribution link clicking brings up contributors dialog
     this.bootstrap.ui.dom_attribution_link?.addEventListener('click', (event: MouseEvent) => {
       event.preventDefault()
