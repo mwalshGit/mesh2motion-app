@@ -26,7 +26,7 @@ export class EventListeners {
       this.bootstrap.edit_skeleton_step.load_original_armature_from_model(this.bootstrap.load_skeleton_step.armature())
       this.bootstrap.process_step = this.bootstrap.process_step_changed(ProcessStep.EditSkeleton)
       if (this.bootstrap.load_skeleton_step.consume_quick_human_fit_request()) {
-        this.bootstrap.edit_skeleton_step.begin_human_marker_fit()
+        this.bootstrap.edit_skeleton_step.begin_human_quick_fit_editing(this.bootstrap.load_model_step.model_meshes())
       }
     })
 
@@ -65,8 +65,17 @@ export class EventListeners {
       this.bootstrap.enable_orbit_controls(true)
     })
 
+    this.bootstrap.edit_skeleton_step.addEventListener('humanQuickFitStarted', () => {
+      this.bootstrap.frame_model_front_view_and_lock()
+      this.bootstrap.skeleton_helper?.show()
+    })
+
     this.bootstrap.ui.dom_generate_human_fit_skeleton_button?.addEventListener('click', () => {
       this.bootstrap.edit_skeleton_step.generate_human_fit_skeleton()
+    })
+
+    this.bootstrap.ui.dom_accept_human_fit_button?.addEventListener('click', () => {
+      this.bootstrap.ui.dom_bind_pose_button?.click()
     })
 
     // attribution link clicking brings up contributors dialog
