@@ -81,6 +81,7 @@ export class StepEditSkeleton extends EventTarget {
   // Hands and fingers remain template-driven; the wrist marker moves the whole hand.
   private human_fit_marker_index: number | null = null
   private readonly human_fit_markers: Partial<Record<HumanFitMarker, Vector3>> = {}
+  private human_fit_marker_points: Points | null = null
 
   private readonly joint_texture = new TextureLoader().load('/images/skeleton-joint-point.png')
 
@@ -503,6 +504,10 @@ export class StepEditSkeleton extends EventTarget {
     if (this._current_skeleton_type !== SkeletonType.Human) return
     this.human_fit_marker_index = 0
     for (const marker of HUMAN_FIT_MARKERS) delete this.human_fit_markers[marker.key]
+    this.remove_human_fit_marker_points()
+    // The template is only an internal starting point. Keep it out of the way
+    // while the user is placing landmarks, then reveal the fitted result.
+    this.dispatchEvent(new CustomEvent('humanMarkerFitStarted'))
     this.update_human_marker_fit_status()
   }
 
@@ -519,10 +524,13 @@ export class StepEditSkeleton extends EventTarget {
 
     const marker = HUMAN_FIT_MARKERS[this.human_fit_marker_index]
     this.human_fit_markers[marker.key] = hit.point.clone()
+    this.show_human_fit_marker_points()
     this.human_fit_marker_index += 1
     if (this.human_fit_marker_index >= HUMAN_FIT_MARKERS.length) {
       this.human_fit_marker_index = null
       this.fit_human_skeleton_from_markers()
+      this.remove_human_fit_marker_points()
+      this.dispatchEvent(new CustomEvent('humanMarkerFitCompleted'))
     }
     this.update_human_marker_fit_status()
     return true
@@ -541,7 +549,7 @@ export class StepEditSkeleton extends EventTarget {
     if (this.human_fit_marker_index === null) {
       status.textContent = this.human_fit_markers.chin === undefined
         ? 'For upright human characters in an A- or T-pose.'
-        : 'Skeleton fitted. You can still refine any joint normally.'
+        : 'Skeleton fitted. You can now drag any joint to refine it.'
       return
     }
     const marker = HUMAN_FIT_MARKERS[this.human_fit_marker_index]
@@ -606,6 +614,40 @@ export class StepEditSkeleton extends EventTarget {
     this.fit_leg(leftCalf as Bone, leftFoot as Bone, markers.left_knee as Vector3, torsoScale)
     this.fit_leg(rightCalf as Bone, rightFoot as Bone, markers.right_knee as Vector3, torsoScale)
     this.dispatchEvent(new CustomEvent('skeletonTransformed'))
+  }
+
+  private show_human_fit_marker_points (): void {
+    if (this._main_scene_ref === null) return
+    this.remove_human_fit_marker_points()
+
+    const positions = HUMAN_FIT_MARKERS
+      .map(marker => this.human_fit_markers[marker.key])
+      .filter((point): point is Vector3 => point !== undefined)
+      .flatMap(point => [point.x, point.y, point.z])
+    if (positions.length === 0) return
+
+    const geometry = new BufferGeometry()
+    geometry.setAttribute('position', new Float32BufferAttribute(positions, 3))
+    const material = new PointsMaterial({
+      color: 0xffb000,
+      size: 24,
+      sizeAttenuation: false,
+      depthTest: false,
+      map: this.joint_texture,
+      transparent: true
+    })
+    this.human_fit_marker_points = new Points(geometry, material)
+    this.human_fit_marker_points.name = 'Human Fit Markers'
+    this.human_fit_marker_points.renderOrder = 101
+    this._main_scene_ref.add(this.human_fit_marker_points)
+  }
+
+  private remove_human_fit_marker_points (): void {
+    if (this.human_fit_marker_points === null) return
+    this._main_scene_ref?.remove(this.human_fit_marker_points)
+    this.human_fit_marker_points.geometry.dispose()
+    this.human_fit_marker_points.material.dispose()
+    this.human_fit_marker_points = null
   }
 
   private fit_arm (upperarm: Bone, forearm: Bone, hand: Bone, elbow: Vector3, wrist: Vector3, scale: number): void {
