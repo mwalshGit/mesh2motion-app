@@ -111,6 +111,11 @@ export class EventListeners {
     })
 
     this.bootstrap.renderer.domElement.addEventListener('pointerdown', (event: PointerEvent) => {
+      if (this.bootstrap.edit_skeleton_step.is_placing_human_fit_marker()) {
+        event.preventDefault()
+        this.bootstrap.handle_human_fit_marker_mouse_down(event)
+        return
+      }
       if (this.bootstrap.edit_skeleton_step.is_placing_underarm_marker()) {
         event.preventDefault()
         this.bootstrap.handle_underarm_marker_mouse_down(event)
