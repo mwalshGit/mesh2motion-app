@@ -38,6 +38,12 @@ const HUMAN_FIT_MARKERS: Array<{ key: HumanFitMarker, label: string }> = [
   { key: 'right_knee', label: 'right knee' }
 ]
 
+// With left/right mirroring on, a Mixamo-style fit needs only one side of the
+// body. The matching point is created across the character centreline.
+const SYMMETRIC_HUMAN_FIT_MARKERS: HumanFitMarker[] = [
+  'chin', 'groin', 'left_elbow', 'left_wrist', 'left_knee'
+]
+
 /*
  * StepEditSkeleton
  * Handles editing the skeleton of the model
@@ -523,11 +529,12 @@ export class StepEditSkeleton extends EventTarget {
     const hit = raycaster.intersectObject(model, true)[0]
     if (hit === undefined) return true
 
-    const marker = HUMAN_FIT_MARKERS[this.human_fit_marker_index]
+    const marker = this.active_human_fit_markers()[this.human_fit_marker_index]
     this.human_fit_markers[marker.key] = hit.point.clone()
+    if (this.mirror_mode_enabled) this.add_mirrored_human_fit_marker(marker.key, hit.point, model)
     this.show_human_fit_marker_points()
     this.human_fit_marker_index += 1
-    if (this.human_fit_marker_index >= HUMAN_FIT_MARKERS.length) {
+    if (this.human_fit_marker_index >= this.active_human_fit_markers().length) {
       this.human_fit_marker_index = null
       if (this.ui.dom_generate_human_fit_skeleton_button !== null) this.ui.dom_generate_human_fit_skeleton_button.style.display = 'block'
     }
@@ -548,11 +555,29 @@ export class StepEditSkeleton extends EventTarget {
     if (this.human_fit_marker_index === null) {
       status.textContent = this.human_fit_markers.chin === undefined
         ? 'For upright human characters in an A- or T-pose.'
-        : 'All 8 markers are placed. Check them against the guide, then generate the skeleton.'
+        : 'All markers are placed. Check them against the guide, then generate the skeleton.'
       return
     }
-    const marker = HUMAN_FIT_MARKERS[this.human_fit_marker_index]
-    status.textContent = `Click the ${marker.label} on the mesh (${this.human_fit_marker_index + 1} of ${HUMAN_FIT_MARKERS.length}).`
+    const marker = this.active_human_fit_markers()[this.human_fit_marker_index]
+    const symmetric_hint = this.mirror_mode_enabled && marker.key.startsWith('left_') ? ' The matching right-side point will be added automatically.' : ''
+    status.textContent = `Click the ${marker.label} on the mesh (${this.human_fit_marker_index + 1} of ${this.active_human_fit_markers().length}).${symmetric_hint}`
+  }
+
+  private active_human_fit_markers (): Array<{ key: HumanFitMarker, label: string }> {
+    if (!this.mirror_mode_enabled) return HUMAN_FIT_MARKERS
+    return SYMMETRIC_HUMAN_FIT_MARKERS.map(key => HUMAN_FIT_MARKERS.find(marker => marker.key === key) as { key: HumanFitMarker, label: string })
+  }
+
+  private add_mirrored_human_fit_marker (marker: HumanFitMarker, point: Vector3, model: Object3D): void {
+    const opposite: Partial<Record<HumanFitMarker, HumanFitMarker>> = {
+      left_elbow: 'right_elbow',
+      left_wrist: 'right_wrist',
+      left_knee: 'right_knee'
+    }
+    const opposite_marker = opposite[marker]
+    if (opposite_marker === undefined) return
+    const centre_x = new Box3().setFromObject(model).getCenter(new Vector3()).x
+    this.human_fit_markers[opposite_marker] = new Vector3(2 * centre_x - point.x, point.y, point.z)
   }
 
   public generate_human_fit_skeleton (): void {
