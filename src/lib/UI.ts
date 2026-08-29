@@ -70,6 +70,11 @@ export class UI {
   dom_set_left_underarm_button: HTMLButtonElement | null = null
   dom_set_right_underarm_button: HTMLButtonElement | null = null
 
+  // quick human skeleton fitting controls
+  dom_human_marker_fit_container: HTMLElement | null = null
+  dom_start_human_marker_fit_button: HTMLButtonElement | null = null
+  dom_human_marker_fit_status: HTMLElement | null = null
+
   dom_skinned_mesh_tools: HTMLElement | null = null
   dom_skinned_mesh_animation_tools: HTMLElement | null = null
   dom_back_to_edit_skeleton_button: HTMLButtonElement | null = null
@@ -201,6 +206,9 @@ export class UI {
     this.dom_arm_plane_setting_container = document.querySelector('#arm-plane-setting-container')
     this.dom_set_left_underarm_button = document.querySelector('#set-left-underarm-button')
     this.dom_set_right_underarm_button = document.querySelector('#set-right-underarm-button')
+    this.dom_human_marker_fit_container = document.querySelector('#human-marker-fit-container')
+    this.dom_start_human_marker_fit_button = document.querySelector('#start-human-marker-fit-button')
+    this.dom_human_marker_fit_status = document.querySelector('#human-marker-fit-status')
 
     this.dom_bind_pose_button = document.querySelector('#action_bind_pose')
     // this.dom_scale_skeleton_input_box = document.querySelector('#scale-input')
