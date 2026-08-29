@@ -22,6 +22,7 @@ export class UI {
   dom_reset_model_position_button: HTMLButtonElement | null = null
   dom_auto_align_model_button: HTMLButtonElement | null = null
   dom_analyze_model_link: HTMLButtonElement | null = null
+  dom_quick_human_fit_button: HTMLButtonElement | null = null
 
   dom_load_skeleton_tools: HTMLElement | null = null
   dom_load_skeleton_button: HTMLButtonElement | null = null
@@ -165,6 +166,7 @@ export class UI {
     this.dom_reset_model_position_button = document.querySelector('#reset-model-position-button')
     this.dom_auto_align_model_button = document.querySelector('#auto-align-model-button')
     this.dom_analyze_model_link = document.querySelector('#analyze-model-link')
+    this.dom_quick_human_fit_button = document.querySelector('#quick-human-fit-button')
 
     // UI controls for loading/working with skeleton
     this.dom_load_skeleton_tools = document.querySelector('#load-skeleton-tools')
